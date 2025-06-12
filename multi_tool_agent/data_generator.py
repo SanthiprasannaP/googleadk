@@ -247,8 +247,8 @@ def generate_customers(num_customers: int = 100000) -> pd.DataFrame:
             }
             customers.append(customer)
             
-        # Reset Faker's unique email generator
-        fake.unique.clear()
+            # Reset Faker's unique email generator
+            fake.unique.clear()
         return pd.DataFrame(customers)
     except Exception as e:
         print(f"Error generating customers: {str(e)}")
@@ -298,12 +298,14 @@ def generate_policies(customers_df: pd.DataFrame, num_policies: int = 100000) ->
         customer_weights = np.array([1 / (policies + 1) for policies in customer_policies.values()])
         customer_weights = customer_weights / customer_weights.sum()  # Normalize weights
         
+        current_date = date.today()
+        
         for _ in tqdm(range(num_policies), desc="Policies"):
             # Sample customer with weighted probability
             customer_idx = np.random.choice(len(customers_df), p=customer_weights)
             customer = customers_df.iloc[customer_idx]
             
-            # Rest of the policy generation logic remains the same
+            # Generate policy details
             policy_type = random.choices(
                 list(POLICY_TYPE_DISTRIBUTION.keys()),
                 weights=list(POLICY_TYPE_DISTRIBUTION.values())
@@ -322,7 +324,7 @@ def generate_policies(customers_df: pd.DataFrame, num_policies: int = 100000) ->
             vehicle_value = generate_vehicle_value(brand, model, year)
             coverage_amount = generate_realistic_coverage_amount(vehicle_value, policy_type)
             
-            vehicle_age = date.today().year - year
+            vehicle_age = current_date.year - year
             # Reset claim history for new policy
             claim_history = 0
             premium_amount = generate_realistic_premium(
@@ -330,27 +332,38 @@ def generate_policies(customers_df: pd.DataFrame, num_policies: int = 100000) ->
                 vehicle_age, claim_history
             )
             
-            start_date = fake.date_between(start_date='-2y', end_date='today')
-            policy_duration_years = calculate_policy_duration(policy_type, year)
-            end_date = start_date + timedelta(days=365 * policy_duration_years)
+            # First determine if this will be a future policy or current/expired policy
+            is_future_policy = random.random() < 0.2  # 20% chance of being a future policy
             
-            if end_date < date.today():
-                end_date = date.today() + timedelta(days=random.randint(1, 365))
-            
-            status_weights = {
-                'Active': 0.75,
-                'Expired': 0.20,
-                'Cancelled': 0.05
-            }
-            status = random.choices(
-                list(status_weights.keys()),
-                weights=list(status_weights.values())
-            )[0]
-            
-            if end_date < date.today():
-                status = 'Expired'
-            elif start_date > date.today():
-                status = 'Active'
+            if is_future_policy:
+                # Generate future policy
+                start_date = fake.date_between(start_date='+1d', end_date='+1y')  # Start date between tomorrow and 1 year from now
+                policy_duration_years = calculate_policy_duration(policy_type, year)
+                end_date = start_date + timedelta(days=365 * policy_duration_years)
+                status = 'Active'  # Future policies are always active
+            else:
+                # Generate current or expired policy
+                start_date = fake.date_between(start_date='-3y', end_date='today')  # Start date between 3 years ago and today
+                policy_duration_years = calculate_policy_duration(policy_type, year)
+                end_date = start_date + timedelta(days=365 * policy_duration_years)
+                
+                if end_date < current_date:
+                    # Policy has ended
+                    status = 'Expired'
+                    # Ensure end_date is in the past
+                    if end_date > current_date:
+                        end_date = current_date - timedelta(days=random.randint(1, 30))
+                else:
+                    # Policy is current
+                    if random.random() < 0.15:  # 15% chance of being cancelled
+                        status = 'Cancelled'
+                        # For cancelled policies, set end_date to a random date between start_date and current_date
+                        end_date = fake.date_between(start_date=start_date, end_date=current_date)
+                    else:
+                        status = 'Active'
+                        # For active policies, ensure end_date is in the future
+                        if end_date <= current_date:
+                            end_date = current_date + timedelta(days=random.randint(1, 365))
             
             policy = {
                 'policy_id': str(uuid.uuid4()),
@@ -410,23 +423,16 @@ def generate_claims(policies_df: pd.DataFrame, num_claims: int = 25000) -> pd.Da
         if len(eligible_policies) == 0:
             raise ValueError("No eligible policies found for claims")
         
-        # Get unique customers from eligible policies
-        eligible_customers = eligible_policies['customer_id'].unique()
-        # Randomly select customers for claims (one claim per customer)
-        num_claims = min(num_claims, len(eligible_customers))
-        selected_customers = set(np.random.choice(eligible_customers, num_claims, replace=False))
+        # Instead of selecting customers independently, we'll select policies
+        # and ensure one claim per customer by grouping
+        num_claims = min(num_claims, len(eligible_policies))
+        selected_policies = eligible_policies.sample(n=num_claims, replace=False)
         
-        # Create a mask for policies of selected customers
-        claim_mask = eligible_policies['customer_id'].isin(selected_customers)
-        claim_policies = eligible_policies[claim_mask]
-        
-        # Group policies by customer to ensure one claim per customer
-        customer_policies = claim_policies.groupby('customer_id').apply(
-            lambda x: x.sample(1) if len(x) > 0 else None
-        ).reset_index(drop=True)
+        # Group by customer_id to ensure one claim per customer
+        customer_policies = selected_policies.groupby('customer_id').first().reset_index()
         
         # Generate claims for selected policies
-        print(f"\nGenerating {num_claims} claims (one per customer)...")
+        print(f"\nGenerating {len(customer_policies)} claims (one per customer)...")
         with tqdm(total=len(customer_policies), desc="Generating claims") as pbar:
             for _, policy in customer_policies.iterrows():
                 claim = generate_single_claim(policy, current_date)
@@ -450,12 +456,21 @@ def generate_claims(policies_df: pd.DataFrame, num_claims: int = 25000) -> pd.Da
 def generate_single_claim(policy: pd.Series, current_date: date) -> Optional[Dict]:
     """Helper function to generate a single claim"""
     try:
-        # Generate claim date
+        # Ensure claim date is after policy start date
+        if policy['start_date'] >= current_date:
+            return None
+            
+        # Generate claim date between policy start date and min(policy end date, current date)
         max_claim_date = min(policy['end_date'], current_date)
         if policy['start_date'] >= max_claim_date:
             return None
             
-        claim_date = fake.date_between(start_date=policy['start_date'], end_date=max_claim_date)
+        # Add a minimum buffer of 1 day after policy start
+        min_claim_date = policy['start_date'] + timedelta(days=1)
+        if min_claim_date >= max_claim_date:
+            return None
+            
+        claim_date = fake.date_between(start_date=min_claim_date, end_date=max_claim_date)
         
         # Generate claim type and amount
         claim_type = random.choices(
@@ -492,10 +507,24 @@ def generate_single_claim(policy: pd.Series, current_date: date) -> Optional[Dic
         
         settlement_date = None
         settlement_amount = None
-        if status == 'Settled':
-            settlement_date = claim_date + timedelta(days=random.randint(15, 90))
-            settlement_amount = round(claim_amount * random.uniform(0.85, 1.0))
         
+        # Always generate settlement details for settled claims
+        if status == 'Settled':
+            # Settlement date must be after claim date
+            min_settlement_date = claim_date + timedelta(days=15)  # Minimum 15 days processing time
+            max_settlement_date = min(current_date, claim_date + timedelta(days=90))  # Maximum 90 days processing time
+            
+            # If we can't generate a valid settlement date, change status to 'Pending'
+            if min_settlement_date > max_settlement_date:
+                status = 'Pending'
+            else:
+                settlement_date = fake.date_between(start_date=min_settlement_date, end_date=max_settlement_date)
+                # Generate settlement amount between 85% and 100% of claim amount
+                settlement_amount = round(claim_amount * random.uniform(0.85, 1.0))
+                # Ensure settlement amount is not None
+                if settlement_amount is None:
+                    settlement_amount = round(claim_amount * 0.9)  # Default to 90% if random generation fails
+
         return {
             'claim_id': str(uuid.uuid4()),
             'policy_id': policy['policy_id'],
@@ -532,7 +561,7 @@ def generate_all_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         # Generate claims with progress bar (one per customer)
         print("\nGenerating claim data...")
         claims_df = generate_claims(policies_df, num_claims=25000)
-        
+    
         # Save to CSV files with progress bar
         print("\nSaving data to CSV files...")
         with tqdm(total=3, desc="Saving files") as pbar:
@@ -542,7 +571,7 @@ def generate_all_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             pbar.update(1)
             claims_df.to_csv('multi_tool_agent/claims.csv', index=False)
             pbar.update(1)
-        
+    
         print("\nData generation completed successfully!")
         return customers_df, policies_df, claims_df
     except Exception as e:
