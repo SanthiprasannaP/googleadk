@@ -7,7 +7,9 @@ import os
 class InsuranceRiskAgents:
     def __init__(self):
         # Load model and background data
-        model_data = joblib.load("calibrated_risk_model.joblib")
+        model_path = os.path.join(os.path.dirname(__file__), '..', 'Data', 'calibrated_risk_model.joblib')
+        model_path = os.path.abspath(model_path)  
+        model_data = joblib.load(model_path)
         self.model = model_data['calibrated_model']
         self.background_data = model_data['background_data']
         

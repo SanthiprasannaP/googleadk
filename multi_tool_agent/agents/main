@@ -1,0 +1,3 @@
+# Optional: Add this if deploying to ADK Web or running programmatically
+if __name__ == "__main__":
+    print("Root agent loaded: ", root_agent.name)
