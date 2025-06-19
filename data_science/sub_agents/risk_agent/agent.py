@@ -34,31 +34,18 @@ def predict_only(inputs: dict, tool_context=None) -> dict:
     }
 
 
-# FunctionTool: Trigger explainability agent
-from .sub_agents.explainability_agent.agent import explain_risk_tool
+def explain_risk(input_data: dict, tool_context=None) -> dict:
+    input_data = input_data.get("input_data")
 
-def run_explainer(inputs: dict, tool_context=None) -> dict:
-    if not tool_context or "last_input" not in tool_context.state:
-        return {"error": "No input found for explanation."}
+    if input_data is None:
+        return {"error": "No input provided and none found in context."}
 
-    input_data = tool_context.state["last_input"]
-
-    # Change during multi agent
-    result = explain_risk_tool(input_data=input_data, tool_context=tool_context)
+    result = risk_service.explain_risk(input_data)
 
     if tool_context:
         tool_context.state["last_explanation"] = result
 
-    return {
-        "risk_score": result.get("risk_score"),
-        "confidence": result.get("confidence"),
-        "nl_explanation": result.get("nl_explanation"),
-        "factors": result.get("factors"),
-        "compliance_note": result.get("compliance_note"),
-        "audit_id": result.get("audit_id"),
-        "model_version": result.get("model_version"),
-        "note": "Would you like to see a visual dashboard next?"
-    }
+    return result
 
 
 # # FunctionTool: Trigger dashboard agent
@@ -74,7 +61,7 @@ def run_explainer(inputs: dict, tool_context=None) -> dict:
 
 # Wrap the tools
 predict_tool = FunctionTool(predict_only)
-explain_tool = FunctionTool(run_explainer)
+explain_tool = FunctionTool(explain_risk)
 # dashboard_tool = FunctionTool(run_dashboard)
 
 # Root agent
@@ -105,6 +92,7 @@ When receiving user input to predict risk, expect the input data under the key '
 Step-by-step:
 1. Use `predict_insurance_risk` tool with the 'input_data' dictionary to return a risk score.
 2. Ask if the user wants an explanation — if yes, use `explain_risk_prediction`.
+2a. Use `explain_risk_prediction` to generate SHAP values, key factors, and visual plots. input data in the same format as above with tool context.
 3. Then ask if they want a visual dashboard — if yes, use `generate_dashboard_summary`.
 
 Store:
