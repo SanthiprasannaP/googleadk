@@ -1,12 +1,12 @@
 #Streamlitapp/dashboard_ui.py
 
-import streamlit as st
+import streamlit as st # type: ignore
 import json
 import os
 
 st.set_page_config(page_title="Insurance Risk Dashboard", layout="wide")
 
-output_path = os.path.join(os.getcwd(), "..", "dashboard_output", "summary_output.json")
+output_path = os.path.join(os.getcwd(), "dashboard_output", "summary_output.json")
 
 # Load summary data
 try:
@@ -25,10 +25,7 @@ try:
     st.write(dashboard["explanation"])
     
     st.subheader("Visuals")
-    st.markdown(
-        f'<iframe src="{dashboard["force_plot_path"]}" width="100%" height="500"></iframe>',
-        unsafe_allow_html=True
-    )
+    st.image("shap_outputs/"+dashboard["force_plot_path"], caption="SHAP Force Plot")
     st.image(dashboard["decision_plot_path"], caption="SHAP Decision Plot")
     
     st.caption(f'Model Version: {dashboard["model_version"]}, Audit ID: {dashboard["audit_id"]}')

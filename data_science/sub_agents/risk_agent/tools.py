@@ -4,7 +4,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import os
 import json 
-from fpdf import FPDF
+from fpdf import FPDF # type: ignore
 from google.adk.agents.callback_context import CallbackContext
 import base64
 import io
@@ -141,23 +141,27 @@ class InsuranceRiskAgents:
 
     
     def _save_force_plot(self, shap_values):
-        shap.initjs()
-        plot_html = shap.force_plot(
-           self.explainer.expected_value,
-           shap_values,
-           feature_names=self.feature_names,
-           matplotlib=False
-        )
         plot_id = str(uuid.uuid4())
-
+        plt.figure(figsize=(12, 6))
+        shap.force_plot(
+            self.explainer.expected_value,
+            shap_values,
+            self.feature_names,
+            matplotlib=True,
+            show=False
+        )
+        plt.title("SHAP Force Plot: Feature Contributions to Risk", fontsize=14)
+        plt.xlabel("SHAP Value", fontsize=12)
+        plt.tight_layout()
         shap_dir = os.path.join(os.getcwd(), "shap_outputs")
         os.makedirs(shap_dir, exist_ok=True)
-
-        filename = f"shap_force_plot_{plot_id}.html"
-        filepath = os.path.join(shap_dir, filename)
-        shap.save_html(filepath, plot_html)
-        return filepath
-
+        file_name = f"shap_force_plot_{plot_id}.png"
+        path = os.path.join(shap_dir, file_name)
+        plt.savefig(path, bbox_inches='tight')
+        plt.close()
+     
+        return file_name
+       
     
 
     def _save_decision_plot(self, shap_values):
@@ -217,6 +221,24 @@ class DashboardService:
 
 class ReportService:
     def generate_pdf_report(self, risk_data: dict, explanation_data: dict, summary_text: str) -> str:
+        ## json load sumary output
+
+        json_path = os.path.join(os.getcwd(), "dashboard_output", "summary_output.json")
+        if os.path.exists(json_path):
+            with open(json_path, 'r') as f:
+                summary_data = json.load(f)
+        else:
+            summary_data = {
+                "risk_score": risk_data.get("risk_score", 0),
+                "confidence": risk_data.get("confidence", 0),
+                "top_features": explanation_data.get("factors", []),
+                "explanation": explanation_data.get("nl_explanation", ""),
+                "force_plot_path": explanation_data.get("shap_force_plot_path", ""),
+                "decision_plot_path": explanation_data.get("decision_plot_path", ""),
+                "model_version": explanation_data.get("model_version", ""),
+                "audit_id": explanation_data.get("audit_id", "")
+            }
+        # Create PDF report
         pdf = FPDF()
         pdf.add_page()
 
@@ -253,15 +275,25 @@ class ReportService:
         pdf.cell(0, 10, 'SHAP Decision Plot', 0, 1)
         pdf.ln(5)
         
-        plot_base64 = explanation_data.get('decision_plot_path', '').split(',')[-1]
-        if plot_base64:
-            try:
-                img_bytes = base64.b64decode(plot_base64)
-                img_file = io.BytesIO(img_bytes)
-                pdf.image(img_file, x=10, y=None, w=180)
-            except Exception:
-                pdf.cell(0, 10, "Could not render decision plot.", 0, 1)
+        image_path = summary_data.get('decision_plot_path', '')
+        if os.path.exists(image_path):
+            pdf.image(image_path, x=10, w=190)
 
+        else:
+            pdf.cell(0, 10, "Decision plot image not found.", 0, 1)
+        pdf.ln(10)
+
+        image_path = "shap_outputs/"+ summary_data.get('force_plot_path', '')
+        # Force Plot
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(0, 10, 'SHAP Force Plot', 0, 1)
+        pdf.ln(5)
+        if os.path.exists(image_path):
+            pdf.image(image_path, x=10, w=190)
+        else:
+            pdf.cell(0, 10, "Force plot image not found.", 0, 1)
+        pdf.ln(10)
+    
         # Return as base64 data URI
         pdf_output = pdf.output(dest='S')
         pdf_base64 = base64.b64encode(pdf_output).decode('utf-8')

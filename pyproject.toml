@@ -29,6 +29,7 @@ scikit-learn = "1.6.1"
 xgboost = "^3.0.2"
 ipython = "^9.3.0"
 fpdf2 = "^2.7.0"
+streamlit = "^1.46.0"
 
 
 [tool.poetry.group.dev.dependencies]
