@@ -4,6 +4,10 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import os
 import json 
+from fpdf import FPDF
+from google.adk.agents.callback_context import CallbackContext
+import base64
+import io
 
 class InsuranceRiskAgents:
     def __init__(self):
@@ -210,3 +214,63 @@ class DashboardService:
             return {"error": f"Failed to save dashboard summary: {str(e)}"}
 
         return summary
+
+class ReportService:
+    def generate_pdf_report(self, risk_data: dict, explanation_data: dict, summary_text: str) -> str:
+        pdf = FPDF()
+        pdf.add_page()
+
+        # Title
+        pdf.set_font("Arial", 'B', 16)
+        pdf.cell(0, 10, 'Insurance Risk Assessment Report', 0, 1, 'C')
+        pdf.ln(10)
+
+        # Summary
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(0, 10, 'Executive Summary', 0, 1)
+        pdf.set_font("Arial", '', 12)
+        pdf.multi_cell(0, 10, summary_text)
+        pdf.ln(10)
+
+        # Key Metrics
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(0, 10, 'Key Metrics', 0, 1)
+        pdf.set_font("Arial", '', 12)
+        pdf.cell(0, 10, f"Risk Score: {risk_data.get('risk_score', 'N/A'):.2f}", 0, 1)
+        pdf.cell(0, 10, f"Confidence: {risk_data.get('confidence', 'N/A'):.2f}", 0, 1)
+        pdf.ln(5)
+
+        # Risk Factors
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(0, 10, 'Top Risk Factors', 0, 1)
+        pdf.set_font("Arial", '', 12)
+        for factor in explanation_data.get('factors', []):
+            pdf.cell(0, 10, f"- {factor}", 0, 1)
+        pdf.ln(10)
+
+        # Decision Plot
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(0, 10, 'SHAP Decision Plot', 0, 1)
+        pdf.ln(5)
+        
+        plot_base64 = explanation_data.get('decision_plot_path', '').split(',')[-1]
+        if plot_base64:
+            try:
+                img_bytes = base64.b64decode(plot_base64)
+                img_file = io.BytesIO(img_bytes)
+                pdf.image(img_file, x=10, y=None, w=180)
+            except Exception:
+                pdf.cell(0, 10, "Could not render decision plot.", 0, 1)
+
+        # Return as base64 data URI
+        pdf_output = pdf.output(dest='S')
+        pdf_base64 = base64.b64encode(pdf_output).decode('utf-8')
+
+        report_artifact = {
+            "file_name": "risk_report.pdf",
+            "file_data": f"data:application/pdf;base64,{pdf_base64}",
+            "file_type": "application/pdf",
+        }
+        return report_artifact
+
+      

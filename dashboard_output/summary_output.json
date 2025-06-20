@@ -1,5 +1,5 @@
 {
-    "timestamp": "2025-06-20T21:41:49.910983",
+    "timestamp": "2025-06-20T22:50:44.705703",
     "risk_score": 0.7987711429595947,
     "confidence": 0.5975422859191895,
     "explanation": "High risk (0.80) primarily due to: vehicle_age (0.19, increases risk) + policy_type_Comprehensive (0.15, increases risk) + vehicle_value (-0.02, reduces risk) + premium_amount (0.02, increases risk)",
@@ -9,8 +9,8 @@
         "vehicle_value (-0.02, reduces risk)",
         "premium_amount (0.02, increases risk)"
     ],
-    "force_plot_path": "googleadk/shap_outputs/shap_force_plot_cb859359-5091-4a47-a53f-4ca31208b7e6.html",
-    "decision_plot_path": "shap_decision_plot_a62f96f3-018f-4d8d-8773-3302d8bff2bb.png",
+    "force_plot_path": "/Users/nihalpuram/Development/data-science/shap_outputs/shap_force_plot_4798b40f-2f74-425d-a32c-450cc6eac089.html",
+    "decision_plot_path": "shap_decision_plot_1cfd29fe-4b75-48b4-9338-57455a5c92f0.png",
     "model_version": "1.0.20240615",
-    "audit_id": "c48a9f58-53ab-487d-b1c9-4a0c8681e004"
+    "audit_id": "3738f396-fa27-45f8-8c17-42da277a472c"
 }
