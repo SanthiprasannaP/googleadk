@@ -3,6 +3,7 @@ import joblib, shap, pandas as pd, numpy as np, uuid, os, hashlib # type: ignore
 from datetime import datetime
 import matplotlib.pyplot as plt
 import os
+import json 
 
 class InsuranceRiskAgents:
     def __init__(self):
@@ -145,7 +146,7 @@ class InsuranceRiskAgents:
         )
         plot_id = str(uuid.uuid4())
 
-        shap_dir = os.path.join("googleadk", "shap_outputs")
+        shap_dir = os.path.join(os.getcwd(), "shap_outputs")
         os.makedirs(shap_dir, exist_ok=True)
 
         filename = f"shap_force_plot_{plot_id}.html"
@@ -174,3 +175,38 @@ class InsuranceRiskAgents:
         plt.savefig(path, bbox_inches='tight')
         plt.close()
         return path
+
+
+
+class DashboardService:
+    def generate_summary(self, tool_context):
+        try:
+            risk_data = tool_context.state["last_risk_output"]
+            explain_data = tool_context.state["last_explanation"]
+        except KeyError:
+            return {"error": "Missing explanation or risk output in context."}
+
+        summary = {
+            "timestamp": datetime.now().isoformat(),
+            "risk_score": risk_data.get("risk_score"),
+            "confidence": risk_data.get("confidence"),
+            "explanation": explain_data.get("nl_explanation"),
+            "top_features": explain_data.get("factors"),
+            "force_plot_path": explain_data.get("shap_force_plot_path"),
+            "decision_plot_path": explain_data.get("decision_plot_path"),
+            "model_version": explain_data.get("model_version"),
+            "audit_id": explain_data.get("audit_id")
+        }
+
+        # Save summary JSON to dashboard_output/summary_output.json
+        output_dir = os.path.join(os.getcwd(), "dashboard_output")
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, "summary_output.json")
+
+        try:
+            with open(output_path, "w") as f:
+                json.dump(summary, f, indent=4)
+        except Exception as e:
+            return {"error": f"Failed to save dashboard summary: {str(e)}"}
+
+        return summary
