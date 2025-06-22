@@ -22,7 +22,7 @@ A specialized insurance industry platform built with Google's Agent Development 
 ### Insurance-Specific Sub-Agents
 
 <div align="center">
-  <img src="./ArchitectureXRAIL.png" alt="X-RAIL Architecture Diagram" width="800" height="400">
+  <img src="ARC_XRAIL1.png" alt="X-RAIL Architecture Diagram" width="800" height="400">
   <p><em>X-RAIL Multi-Agent Architecture for Insurance Risk Analytics</em></p>
 </div>
 
