@@ -15,12 +15,11 @@
 """Constants used by the ChaseSQL algorithm."""
 import os
 from typing import Any
-import immutabledict
 
 
 # Parameters for ChaseSQL.
-chase_sql_constants_dict: immutabledict.immutabledict[str, Any] = (
-    immutabledict.immutabledict(
+chase_sql_constants_dict: dict[str, Any] = (
+    dict(
         {
             # Whether to transpile the SQL to BigQuery.
             "transpile_to_bigquery": True,

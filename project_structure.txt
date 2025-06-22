@@ -1,0 +1,221 @@
+# Insurance Risk Analytics Multi-Agent System - Project Structure
+
+## Overview
+This project implements a comprehensive insurance risk analytics platform using Google's Agent Development Kit (ADK) with a multi-agent architecture. The system provides natural language to SQL conversion, advanced analytics, risk assessment, and predictive modeling capabilities.
+
+## Directory Structure
+
+```
+data_science/
+├── agent.py                    # Main orchestrator agent
+├── prompts.py                  # Root agent instructions
+├── tools.py                    # Main orchestration tools
+├── sub_agents/                 # Specialized agent modules
+│   ├── analytics/              # Data science and analytics agent
+│   │   ├── agent.py           # Analytics agent definition
+│   │   └── prompts.py         # Analytics agent instructions
+│   ├── bigquery/              # BigQuery database agent
+│   │   ├── agent.py           # BigQuery agent definition
+│   │   ├── prompts.py         # BigQuery agent instructions
+│   │   ├── tools.py           # BigQuery tools and utilities
+│   │   └── chase_sql/         # Advanced SQL generation
+│   │       ├── chase_db_tools.py      # ChaseSQL database tools
+│   │       ├── chase_constants.py     # ChaseSQL constants
+│   │       ├── dc_prompt_template.py  # Data context prompts
+│   │       ├── llm_utils.py           # LLM utility functions
+│   │       ├── qp_prompt_template.py  # Query processing prompts
+│   │       └── sql_postprocessor/     # SQL post-processing
+│   │           ├── sql_translator.py  # SQL translation utilities
+│   │           └── correction_prompt_template.py
+│   ├── bqml/                  # BigQuery ML agent
+│   │   ├── agent.py           # BQML agent definition
+│   │   ├── prompts.py         # BQML agent instructions
+│   │   └── tools.py           # BQML tools and utilities
+│   └── risk_agent/            # Risk assessment agent
+│       ├── agent.py           # Risk agent definition
+│       ├── tools.py           # Risk assessment tools
+│       └── sub_agents/        # Risk agent sub-components
+│           └── explainability_agent/
+│               └── agent.py   # Explainability agent
+├── utils/                     # Utility modules
+│   ├── utils.py               # General utilities
+│   ├── create_bq_table.py     # BigQuery table creation
+│   ├── dashboard_service.py   # Dashboard generation service
+│   ├── reference_guide_RAG.py # RAG reference guide
+│   └── data/                  # Data files and models
+│       ├── calibrated_risk_model.joblib  # Trained risk model
+│       ├── claims.csv         # Claims data
+│       ├── customers.csv      # Customer data
+│       ├── policies.csv       # Policy data
+│       └── data_generator.py  # Data generation utilities
+└── tools.py                   # Main tools module
+
+## Key Components
+
+### 1. Main Agent (agent.py)
+- **Purpose**: Orchestrates the multi-agent system
+- **Responsibilities**: 
+  - Routes requests to appropriate sub-agents
+  - Manages session state and database settings
+  - Coordinates data flow between agents
+- **Key Functions**:
+  - `setup_before_agent_call()`: Initializes agent state
+  - `root_agent`: Main orchestrator agent instance
+
+### 2. Tools Module (tools.py)
+- **Purpose**: Provides orchestration tools for agent communication
+- **Responsibilities**:
+  - Routes database queries to BigQuery agent
+  - Routes analytics requests to data science agent
+  - Manages data flow between agents
+- **Key Functions**:
+  - `call_db_agent()`: Routes database queries
+  - `call_ds_agent()`: Routes analytics requests
+
+### 3. BigQuery Agent (sub_agents/bigquery/)
+- **Purpose**: Handles natural language to SQL conversion
+- **Responsibilities**:
+  - Converts natural language to BigQuery SQL
+  - Validates and executes SQL queries
+  - Manages database schema and connections
+- **Key Components**:
+  - `agent.py`: BigQuery agent definition
+  - `tools.py`: SQL generation and validation tools
+  - `chase_sql/`: Advanced SQL generation with ChaseSQL
+
+### 4. Analytics Agent (sub_agents/analytics/)
+- **Purpose**: Performs data science and statistical analysis
+- **Responsibilities**:
+  - Executes Python-based data analysis
+  - Generates visualizations and insights
+  - Performs statistical modeling
+- **Key Components**:
+  - `agent.py`: Analytics agent definition
+  - `prompts.py`: Analytics agent instructions
+
+### 5. BQML Agent (sub_agents/bqml/)
+- **Purpose**: Manages BigQuery ML operations
+- **Responsibilities**:
+  - Trains machine learning models in BigQuery
+  - Performs model inference and evaluation
+  - Manages model lifecycle
+- **Key Components**:
+  - `agent.py`: BQML agent definition
+  - `tools.py`: BQML training and inference tools
+
+### 6. Risk Agent (sub_agents/risk_agent/)
+- **Purpose**: Provides insurance risk assessment and explainability
+- **Responsibilities**:
+  - Calculates risk scores for insurance applications
+  - Provides SHAP-based explanations
+  - Generates risk reports and dashboards
+  - Performs impact simulation and what-if analysis
+- **Key Components**:
+  - `agent.py`: Risk agent with comprehensive capabilities
+  - `tools.py`: Risk assessment and simulation tools
+  - `sub_agents/explainability_agent/`: SHAP explainability
+
+### 7. Utilities (utils/)
+- **Purpose**: Provides supporting utilities and services
+- **Key Components**:
+  - `utils.py`: General utility functions
+  - `dashboard_service.py`: Dashboard generation
+  - `create_bq_table.py`: BigQuery table management
+  - `data/`: Data files and trained models
+
+## Data Flow
+
+1. **User Request**: Natural language question enters the system
+2. **Intent Understanding**: Root agent classifies the request
+3. **Database Query**: BigQuery agent converts to SQL and retrieves data
+4. **Analytics Processing**: Analytics agent performs additional analysis
+5. **Risk Assessment**: Risk agent calculates scores and explanations
+6. **Response Generation**: Results are formatted and returned to user
+
+## Configuration
+
+### Environment Variables
+- `ROOT_AGENT_MODEL`: Model for root agent
+- `BIGQUERY_AGENT_MODEL`: Model for BigQuery agent
+- `BQ_PROJECT_ID`: BigQuery project ID
+- `BQ_DATASET_ID`: BigQuery dataset ID
+- `GOOGLE_CLOUD_LOCATION`: Google Cloud location
+- `BASELINE_NL2SQL_MODEL`: Model for SQL generation
+- `NL2SQL_METHOD`: SQL generation method (BASELINE/CHASE)
+
+### Dependencies
+- Google ADK for agent framework
+- Google Cloud BigQuery for data storage
+- Google GenAI for LLM integration
+- SHAP for explainability
+- FastAPI for web interface
+- Poetry for dependency management
+
+## Development Guidelines
+
+### Code Organization
+- Each agent is self-contained in its own directory
+- Tools are separated from agent definitions
+- Utilities are centralized in the utils/ directory
+- Configuration is externalized via environment variables
+
+### Documentation Standards
+- All modules have comprehensive docstrings
+- Functions include parameter and return type annotations
+- Complex logic is explained with inline comments
+- Examples are provided for key functions
+
+### Testing
+- Tests are organized in the tests/ directory
+- Each agent has corresponding test modules
+- Integration tests cover multi-agent workflows
+
+## Deployment
+
+### Local Development
+```bash
+poetry install
+poetry run python main.py
+```
+
+### Cloud Deployment
+- Dockerfile provided for containerization
+- Cloud Run deployment configuration
+- Environment variables configured for cloud deployment
+
+## Monitoring and Logging
+
+### Logging Configuration
+- Structured logging throughout the application
+- Different log levels for development and production
+- Error tracking and monitoring integration
+
+### Performance Monitoring
+- Query execution time tracking
+- Agent response time monitoring
+- Resource usage optimization
+
+## Security Considerations
+
+### Data Protection
+- Input validation and sanitization
+- Secure database connections
+- Audit logging for compliance
+
+### Access Control
+- Environment-based configuration
+- Secure credential management
+- Role-based access control
+
+## Future Enhancements
+
+### Planned Features
+- Additional risk models and algorithms
+- Enhanced visualization capabilities
+- Real-time streaming analytics
+- Advanced fraud detection
+
+### Scalability Improvements
+- Horizontal scaling for agents
+- Caching and optimization
+- Load balancing and failover 
