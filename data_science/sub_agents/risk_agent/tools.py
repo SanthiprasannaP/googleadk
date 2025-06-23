@@ -361,6 +361,15 @@ class ImpactSimulatorService:
         modified_data = base_data.copy()
         
         for change_type, changes in scenario_changes.items():
+            # Handle special case where changes might be a dictionary (for change_deductible)
+            if isinstance(changes, dict):
+                # Keep as dictionary for special cases
+                pass
+            else:
+                # Ensure changes is iterable - convert to list if it's not
+                if not hasattr(changes, '__iter__') or isinstance(changes, (str, bytes)):
+                    changes = [changes] if changes is not None else []
+            
             if change_type == 'premium_adjustment':
                 if 'increase_premium' in changes:
                     modified_data['premium_amount'] = modified_data.get('premium_amount', 0) * 1.2
@@ -384,7 +393,11 @@ class ImpactSimulatorService:
             elif change_type == 'policy_changes':
                 if 'change_deductible' in changes:
                     # This would affect premium calculation, not risk score directly
-                    modified_data['deductible'] = modified_data.get('deductible', 1000) + changes.get('deductible_change', 500)
+                    if isinstance(changes, dict):
+                        deductible_change = changes.get('deductible_change', 500)
+                    else:
+                        deductible_change = 500  # Default value
+                    modified_data['deductible'] = modified_data.get('deductible', 1000) + deductible_change
                 elif 'add_riders' in changes:
                     # Add additional coverage options
                     modified_data['has_roadside_assistance'] = True
@@ -560,7 +573,15 @@ class ImpactSimulatorService:
         confidence = 0.8  # Base confidence
         
         # Adjust based on scenario complexity
-        total_changes = sum(len(changes) for changes in scenario_changes.values())
+        total_changes = 0
+        for changes in scenario_changes.values():
+            # Check if changes is iterable (list, tuple, etc.) before calling len()
+            if hasattr(changes, '__iter__') and not isinstance(changes, (str, bytes)):
+                total_changes += len(changes)
+            else:
+                # If it's not iterable (e.g., int), count it as 1 change
+                total_changes += 1
+        
         if total_changes > 3:
             confidence -= 0.1  # More complex scenarios have lower confidence
         
